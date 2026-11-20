@@ -21,7 +21,7 @@ type IngredientsHandler struct {
 	DB *pgxpool.Pool
 }
 
-func (h *IngredientsHandler) Create (c *gin.Context){
+func (h *IngredientsHandler) Create(c *gin.Context) {
 	var input struct {
 		Name string `json:"name" binding:"required"`
 	}
@@ -43,15 +43,15 @@ func (h *IngredientsHandler) Create (c *gin.Context){
 
 	if name == "" || //vérif format
 		utf8.RuneCountInString(name) > 100 ||
-		strings.ContainsRune(name, '\x00'){
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error" : "Le nom doit contenir entre 1 et 100 caractères, sans nul",
-			})
-			return
-		}
+		strings.ContainsRune(name, '\x00') {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Le nom doit contenir entre 1 et 100 caractères, sans nul",
+		})
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second) //timeout def
-	defer cancel() //defer close context
+	defer cancel()                                                         //defer close context
 
 	var ingredient Models.Ingredient
 
@@ -73,7 +73,7 @@ func (h *IngredientsHandler) Create (c *gin.Context){
 	c.JSON(http.StatusCreated, ingredient) //return valid request
 }
 
-func (h *IngredientsHandler) Show (c *gin.Context) {
+func (h *IngredientsHandler) Show(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64) //parse str id to int id base 10 on 64 bits
 
 	if err != nil || id <= 0 { //ID Verif
@@ -84,7 +84,7 @@ func (h *IngredientsHandler) Show (c *gin.Context) {
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second) //setting timeout params
-	defer cancel() //defer context cancelling
+	defer cancel()                                                         //defer context cancelling
 
 	var ingredient Models.Ingredient //response struct var
 
@@ -96,7 +96,14 @@ func (h *IngredientsHandler) Show (c *gin.Context) {
 
 	if errors.Is(err, pgx.ErrNoRows) { //checking if error is ID not found
 		c.JSON(http.StatusNotFound, gin.H{
-			"error" : "Ingrédient introuvable",
+			"error": "Ingrédient introuvable",
+		})
+		return
+	}
+	if err != nil {
+		log.Printf("Lecture d'un ingrédient : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Impossible de récupérer l'ingrédient",
 		})
 		return
 	}
