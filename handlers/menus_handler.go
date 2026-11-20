@@ -109,3 +109,70 @@ func (h *MenusHandler) Show(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, menu) //returning menu
 }
+
+func (h *MenusHandler) ShowRecipies(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Identifiant invalide",
+		})
+		return
+	}
+
+	helper := HandlersHelper{DB: h.DB}
+
+	//verif recipe exists
+	if !helper.MenuExists(c, id) {
+		return
+	}
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	rows, err := h.DB.Query(
+		timed_ctx,
+		`SELECT id_recipe, id_menu, count
+			FROM include_recipies
+			WHERE id_menu = $1
+			ORDER BY id_recipe
+		`,
+		id,
+	)
+
+	if err != nil {
+		log.Printf("Lecture des associations : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Impossible de récupérer les recettes du menu",
+		})
+		return
+	}
+	defer rows.Close()
+
+	recipies := make([]Models.Include_recipe, 0)
+
+	for rows.Next() {
+		var recipe Models.Include_recipe
+
+		if err := rows.Scan(
+			&recipe.Id_recipe,
+			&recipe.Id_menu,
+			&recipe.Count,
+		); err != nil {
+			log.Printf("Lecture d'une association : %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Impossible de lire les recettes",
+			})
+			return
+		}
+		recipies = append(recipies, recipe)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("Lecture des association : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Lecture des associations a échoué",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, recipies)
+}

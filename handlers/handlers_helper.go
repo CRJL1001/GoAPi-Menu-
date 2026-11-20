@@ -70,3 +70,32 @@ func (h *HandlersHelper) IngredientExists(c *gin.Context, ingredient_id int64) b
 
 	return ingredient_exist
 }
+
+func (h *HandlersHelper) MenuExists(c *gin.Context, menu_id int64) bool {
+	var menu_exist bool
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	err := h.DB.QueryRow(
+		timed_ctx,
+		`SELECT EXISTS (SELECT 1 FROM menus WHERE id = $1)`,
+		menu_id,
+	).Scan(&menu_exist)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Impossible de retrouver le menu",
+		})
+		return false
+	}
+
+	if !menu_exist {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Le menu renseigné n'existe pas",
+		})
+		return false
+	}
+
+	return menu_exist
+}
