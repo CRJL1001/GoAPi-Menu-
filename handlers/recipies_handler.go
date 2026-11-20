@@ -73,7 +73,7 @@ func (h *RecipiesHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, recipe) //return valid request
 }
 
-func (h *RecipiesHandler) Show (c *gin.Context) {
+func (h *RecipiesHandler) Show(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64) //parse str id to int id base 10 on 64 bits
 
 	if err != nil || id <= 0 { //ID Verif
@@ -108,4 +108,71 @@ func (h *RecipiesHandler) Show (c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, recipe) //returning recipe
+}
+
+func (h *RecipiesHandler) ShowIngredients(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Identifiant invalide",
+		})
+		return
+	}
+
+	helper := HandlersHelper{DB: h.DB}
+
+	//verif recipe exists
+	if !helper.RecipeExists(c, id) {
+		return
+	}
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	rows, err := h.DB.Query(
+		timed_ctx,
+		`SELECT id_recipe, id_ingredient, count
+			FROM include_ingredients
+			WHERE id_recipe = $1
+			ORDER BY id_ingredient
+		`,
+		id,
+	)
+
+	if err != nil {
+		log.Printf("Lecture des associations : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Impossible de récupérer les ingrédients de la recette",
+		})
+		return
+	}
+	defer rows.Close()
+
+	ingredients := make([]Models.Include_ingredient, 0)
+
+	for rows.Next() {
+		var ingredient Models.Include_ingredient
+
+		if err := rows.Scan(
+			&ingredient.Id_recipe,
+			&ingredient.Id_ingredient,
+			&ingredient.Count,
+		); err != nil {
+			log.Printf("Lecture d'une association : %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Impossible de lire les ingrédients",
+			})
+			return
+		}
+		ingredients = append(ingredients, ingredient)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("Lecture des association : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Lecture des associations a échoué",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, ingredients)
 }

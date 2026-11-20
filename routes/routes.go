@@ -15,6 +15,7 @@ func Register(router *gin.Engine, db *pgxpool.Pool) {
 	ingredient_handler := &Handlers.IngredientsHandler{DB: db}
 	menu_handler := &Handlers.MenusHandler{DB: db}
 	recipe_handler := &Handlers.RecipiesHandler{DB: db}
+	include_ingredient_handler := &Handlers.IncludeIngredientHandler{DB: db}
 
 	ingredients := router.Group("/ingredients")
 	ingredients.POST("", ingredient_handler.Create)
@@ -25,4 +26,6 @@ func Register(router *gin.Engine, db *pgxpool.Pool) {
 	recipies := router.Group("/recipies")
 	recipies.POST("", recipe_handler.Create)
 	recipies.GET("/:id", recipe_handler.Show)
+	recipies.POST("/add_ingredient_to_recipe", include_ingredient_handler.Create)
+	recipies.GET("/:id/ingredients", recipe_handler.ShowIngredients)
 }
