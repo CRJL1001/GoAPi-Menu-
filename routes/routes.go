@@ -12,9 +12,13 @@ func Register(router *gin.Engine, db *pgxpool.Pool) {
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Route introuvable"})
 	})
-	h := &Handlers.IngredientsHandler{DB: db}
+	ingredient_handler := &Handlers.IngredientsHandler{DB: db}
+	menu_handler := &Handlers.MenusHandler{DB: db}
 
 	ingredients := router.Group("/ingredients")
-	ingredients.POST("", h.Create)
-	ingredients.GET("/:id", h.Show)
+	ingredients.POST("", ingredient_handler.Create)
+	ingredients.GET("/:id", ingredient_handler.Show)
+	menus := router.Group("/menus")
+	menus.POST("", menu_handler.Create)
+	menus.GET("/:id", menu_handler.Show)
 }
