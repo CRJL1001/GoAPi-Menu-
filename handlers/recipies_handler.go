@@ -178,14 +178,6 @@ func (h *RecipiesHandler) ShowIngredients(c *gin.Context) {
 }
 
 func (h *RecipiesHandler) Index(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-
-	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error" : "Identifiant invalide",
-		})
-		return
-	}
 
 	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
 	defer cancel()
@@ -196,7 +188,7 @@ func (h *RecipiesHandler) Index(c *gin.Context) {
 	)
 
 	if err2 != nil {
-		log.Printf("Lecture des recettes impossible : %v", err)
+		log.Printf("Lecture des recettes impossible : %v", err2)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error" : "Lecture des recettes impossible",
 		})
@@ -211,8 +203,8 @@ func (h *RecipiesHandler) Index(c *gin.Context) {
 		var recipe Models.Recipe
 
 		if err := rows.Scan(
-			&recipe.Name,
 			&recipe.ID,
+			&recipe.Name,
 		); err != nil {
 			log.Printf("Impossible de lire la recette : %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{

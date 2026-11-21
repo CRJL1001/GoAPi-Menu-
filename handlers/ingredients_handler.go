@@ -109,3 +109,52 @@ func (h *IngredientsHandler) Show(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, ingredient) //returning ingredient
 }
+
+func (h *IngredientsHandler) Index(c *gin.Context) {
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
+	defer cancel()
+
+	rows, err2 := h.DB.Query(
+		timed_ctx,
+		`SELECT id, name FROM ingredients`,
+	)
+
+	if err2 != nil {
+		log.Printf("Lecture des ingrédients impossible : %v", err2)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Lecture des ingrédients impossible",
+		})
+		return
+	}
+
+	defer rows.Close()
+
+	ingredients := make([]Models.Ingredient, 0)
+
+	for rows.Next() {
+		var ingredient Models.Ingredient
+
+		if err := rows.Scan(
+			&ingredient.ID,
+			&ingredient.Name,
+		); err != nil {
+			log.Printf("Impossible de lire l'ingrédient : %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error" : "Impossible de lire l'ingrédient",
+			})
+			return
+		}
+		ingredients = append(ingredients, ingredient)
+	}
+
+	if err := rows.Err(); err != nil { //récup les erreurs sur les rows
+		log.Printf("Lecture des lignes : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Echec de la lecture des lignes",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, ingredients)
+}

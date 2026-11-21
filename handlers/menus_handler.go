@@ -178,14 +178,6 @@ func (h *MenusHandler) ShowRecipies(c *gin.Context) {
 }
 
 func (h *MenusHandler) Index(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-
-	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error" : "Identifiant invalide",
-		})
-		return
-	}
 
 	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
 	defer cancel()
@@ -196,7 +188,7 @@ func (h *MenusHandler) Index(c *gin.Context) {
 	)
 
 	if err2 != nil {
-		log.Printf("Lecture des menus impossible : %v", err)
+		log.Printf("Lecture des menus impossible : %v", err2)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error" : "Lecture des menus impossible",
 		})
