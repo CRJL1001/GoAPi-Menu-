@@ -224,9 +224,9 @@ func (h *MenusHandler) Index(c *gin.Context) {
 	}
 
 	if err := rows.Err(); err != nil { //récup les erreurs sur les rows
-		log.Printf("Lecture des association : %v", err)
+		log.Printf("Lecture des lignes: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error" : "Echec de la lecture des associations",
+			"error" : "Echec de la lecture des lignes",
 		})
 		return
 	}

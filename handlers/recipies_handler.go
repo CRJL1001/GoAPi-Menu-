@@ -176,3 +176,60 @@ func (h *RecipiesHandler) ShowIngredients(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, ingredients)
 }
+
+func (h *RecipiesHandler) Index(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error" : "Identifiant invalide",
+		})
+		return
+	}
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
+	defer cancel()
+
+	rows, err2 := h.DB.Query(
+		timed_ctx,
+		`SELECT id, name FROM recipies`,
+	)
+
+	if err2 != nil {
+		log.Printf("Lecture des recettes impossible : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Lecture des recettes impossible",
+		})
+		return
+	}
+
+	defer rows.Close()
+
+	recipies := make([]Models.Recipe, 0)
+
+	for rows.Next() {
+		var recipe Models.Recipe
+
+		if err := rows.Scan(
+			&recipe.Name,
+			&recipe.ID,
+		); err != nil {
+			log.Printf("Impossible de lire la recette : %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error" : "Impossible de lire la recette",
+			})
+			return
+		}
+		recipies = append(recipies, recipe)
+	}
+
+	if err := rows.Err(); err != nil { //récup les erreurs sur les rows
+		log.Printf("Lecture des lignes : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Echec de la lecture des lignes",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, recipies)
+}
