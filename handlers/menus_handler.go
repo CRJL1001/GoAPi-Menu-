@@ -176,3 +176,60 @@ func (h *MenusHandler) ShowRecipies(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, recipies)
 }
+
+func (h *MenusHandler) Index(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error" : "Identifiant invalide",
+		})
+		return
+	}
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
+	defer cancel()
+
+	rows, err2 := h.DB.Query(
+		timed_ctx,
+		`SELECT id, name FROM menus`,
+	)
+
+	if err2 != nil {
+		log.Printf("Lecture des menus impossible : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Lecture des menus impossible",
+		})
+		return
+	}
+
+	defer rows.Close()
+
+	menus := make([]Models.Menu, 0)
+
+	for rows.Next() {
+		var menu Models.Menu
+
+		if err := rows.Scan(
+			&menu.ID,
+			&menu.Name,
+		); err != nil {
+			log.Printf("Impossible de lire le menu : %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error" : "Impossible de lire le menu",
+			})
+			return
+		}
+		menus = append(menus, menu)
+	}
+
+	if err := rows.Err(); err != nil { //récup les erreurs sur les rows
+		log.Printf("Lecture des association : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Echec de la lecture des associations",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, menus)
+}
