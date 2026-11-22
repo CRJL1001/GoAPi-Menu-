@@ -23,6 +23,7 @@ func Register(router *gin.Engine, db *pgxpool.Pool) {
 	ingredients.GET("", ingredient_handler.Index)
 	ingredients.GET("/:id", ingredient_handler.Show)
 	ingredients.DELETE("/:id", ingredient_handler.Delete)
+	ingredients.PATCH("/:id", ingredient_handler.Update)
 	menus := router.Group("/menus")
 	menus.POST("/create", menu_handler.Create)
 	menus.GET("", menu_handler.Index)
@@ -30,6 +31,7 @@ func Register(router *gin.Engine, db *pgxpool.Pool) {
 	menus.POST("/add_recipe_to_menu", include_recipe_handler.Create)
 	menus.DELETE("/:id", menu_handler.Delete)
 	menus.GET("/:id/recipies", menu_handler.ShowRecipies)
+	menus.PATCH("/:id", menu_handler.Update)
 	recipies := router.Group("/recipies")
 	recipies.POST("/create", recipe_handler.Create)
 	recipies.GET("", recipe_handler.Index)
@@ -37,4 +39,5 @@ func Register(router *gin.Engine, db *pgxpool.Pool) {
 	recipies.POST("/add_ingredient_to_recipe", include_ingredient_handler.Create)
 	recipies.GET("/:id/ingredients", recipe_handler.ShowIngredients)
 	recipies.DELETE("/:id", recipe_handler.Delete)
+	recipies.PATCH("/:id", recipe_handler.Update)
 }

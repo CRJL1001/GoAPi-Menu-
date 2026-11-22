@@ -261,3 +261,70 @@ func (h *MenusHandler) Delete(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+
+func (h *MenusHandler) Update (c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err != nil || id <= 0 {
+		log.Printf("Identifiant invalide")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error" : "Identifiant invalide",
+		})
+		return
+	}
+
+	var input struct {
+		Name string `json:"name" binding:"required"`
+	}
+
+	c.Request.Body = http.MaxBytesReader(
+		c.Writer,
+		c.Request.Body,
+		4096,
+	)
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error" : "Corps JSON invalide : name est obligatoire",
+		})
+		return
+	}
+
+	name := strings.TrimSpace(input.Name)
+
+	if name == "" ||
+		utf8.RuneCountInString(name) > 100 ||
+		strings.ContainsRune(name, '\x00') {
+			c.JSON(http.StatusBadRequest, gin.H {
+				"error" : "le nom doit contenir entre 1 et 100 caractères, sans nul",
+			})
+			return
+	}
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
+	defer cancel()
+
+	var menu Models.Menu
+
+	err = h.DB.QueryRow(
+		timed_ctx,
+		`UPDATE menus SET name = $1 WHERE id = $2 RETURNING id, name`,
+		name, id,
+	).Scan(&menu.ID, &menu.Name)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error" : "Menu introuvable",
+		})
+		return
+	}
+
+	if err != nil {
+		log.Printf("Modification d'un menu : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Impossible de modifier le menu",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, menu)
+}
