@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	Models "github.com/m/models"
 )
@@ -155,6 +156,49 @@ func (h *IngredientsHandler) Index(c *gin.Context) {
 		})
 		return
 	}
-
 	c.JSON(http.StatusOK, ingredients)
+}
+
+func (h *IngredientsHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"),10, 64)
+
+	if err != nil || id <= 0 {
+		log.Printf(" Identifiant Invalide : %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error" : "Identifiant invalide",
+		})
+		return
+	}
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
+	defer cancel()
+
+	result, err := h.DB.Exec(
+		timed_ctx,
+		`DELETE FROM ingredients WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			log.Printf("Cet ingrédient est utilisé dans une recette")
+			c.JSON(http.StatusConflict, gin.H{
+				"error" : "Cet ingrédient est utilisé dans une recette",
+			})
+			return
+		}
+		log.Printf("Suppresion d'un ingredient : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Impossible de supprimer l'ingrédient",
+		})
+		return
+	}
+
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error" : "Ingrédient introuvable",
+		})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
