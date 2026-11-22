@@ -225,3 +225,39 @@ func (h *MenusHandler) Index(c *gin.Context) {
 
 	c.JSON(http.StatusOK, menus)
 }
+
+func (h *MenusHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"),10, 64)
+
+	if err != nil || id <= 0 {
+		log.Printf(" Identifiant Invalide : %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error" : "Identifiant invalide",
+		})
+		return
+	}
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
+	defer cancel()
+
+	result, err := h.DB.Exec(
+		timed_ctx,
+		`DELETE FROM menus WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		log.Printf("Suppresion d'un menu : %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Impossible de supprimer le menu",
+		})
+		return
+	}
+
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error" : "menu introuvable",
+		})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}

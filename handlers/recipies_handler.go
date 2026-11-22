@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	Models "github.com/m/models"
 )
@@ -224,4 +225,48 @@ func (h *RecipiesHandler) Index(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, recipies)
+}
+
+func (h *RecipiesHandler) Delete(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"),10, 64)
+
+	if err != nil || id <= 0 {
+		log.Printf(" Identifiant Invalide : %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error" : "Identifiant invalide",
+		})
+		return
+	}
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
+	defer cancel()
+
+	result, err := h.DB.Exec(
+		timed_ctx,
+		`DELETE FROM recipies WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			log.Printf("Cette recette contient des associations")
+			c.JSON(http.StatusConflict, gin.H{
+				"error" : "Cette recette contient des associations",
+			})
+			return
+		}
+		log.Printf("Suppresion d'une recette: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Impossible de supprimer la recette",
+		})
+		return
+	}
+
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error" : "Recette introuvable",
+		})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
