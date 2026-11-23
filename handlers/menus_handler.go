@@ -328,3 +328,75 @@ func (h *MenusHandler) Update (c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, menu)
 }
+
+func (h *MenusHandler) ShowIngredients (c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err != nil || id <= 0 {
+		log.Printf("identifiant invalide : %v", err)
+		c.JSON(http.StatusNotFound, gin.H{
+			"error" : "Identifiant invalide",
+		})
+		return
+	}
+
+	helper := HandlersHelper{DB: h.DB}
+
+	if !helper.MenuExists(c, id) {
+		return
+	}
+
+	timed_ctx, cancel := context.WithTimeout(c.Request.Context(), 5 * time.Second)
+	defer cancel()
+
+	rows, err2 := h.DB.Query(
+		timed_ctx,
+		`SELECT i.id, i.name, SUM(ii.count::bigint * ir.count) AS count
+			FROM include_recipies AS ir
+			JOIN include_ingredients AS ii ON ii.id_recipe = ir.id_recipe
+			JOIN ingredients AS i ON i.id = ii.id_ingredient
+			WHERE ir.id_menu = $1
+			GROUP BY i.id, i.name
+			ORDER BY i.id
+		`,
+		id,
+	)
+
+	if err2 != nil {
+		log.Printf("Lecture des ingredients impossible : %v", err2)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Lecture des ingredients impossible",
+		})
+		return
+	}
+
+	defer rows.Close()
+
+	ingredients := make([]Models.IngredientMenuResult, 0)
+
+	for rows.Next() {
+		var ingredient Models.IngredientMenuResult
+
+		if err2 := rows.Scan(
+			&ingredient.ID,
+			&ingredient.Name,
+			&ingredient.Count,
+		); err2 != nil {
+			log.Printf("Impossible de lire la ligne : %v", err2)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error" : "Impossible de lire la ligne",
+			})
+			return
+		}
+		ingredients = append(ingredients, ingredient)
+	}
+
+	if err2 := rows.Err(); err2 != nil {
+		log.Printf("Lecture des associations : %v", err2)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error" : "Lecture des associations a échoué",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, ingredients)
+}

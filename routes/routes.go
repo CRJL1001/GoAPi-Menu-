@@ -32,6 +32,7 @@ func Register(router *gin.Engine, db *pgxpool.Pool) {
 	menus.DELETE("/:id", menu_handler.Delete)
 	menus.GET("/:id/recipies", menu_handler.ShowRecipies)
 	menus.PATCH("/:id", menu_handler.Update)
+	menus.GET("/:id/ingredients", menu_handler.ShowIngredients)
 	recipies := router.Group("/recipies")
 	recipies.POST("/create", recipe_handler.Create)
 	recipies.GET("", recipe_handler.Index)

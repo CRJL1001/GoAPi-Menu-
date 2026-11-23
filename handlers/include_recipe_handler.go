@@ -92,6 +92,5 @@ func (h *IncludeRecipeHandler) Create(c *gin.Context) {
 		})
 		return
 	}
-
 	c.JSON(http.StatusCreated, include_recipe)
 }
