@@ -10,6 +10,7 @@ COPY Database ./Database
 COPY models ./models
 COPY handlers ./handlers
 COPY routes ./routes
+COPY middleware ./middleware
 RUN CGO_ENABLED=0 go build -o /api .
 
 FROM alpine:3.23
