@@ -9,12 +9,19 @@ import (
 	"time"
 
 	Database "github.com/m/Database"
+	Middleware "github.com/m/middleware"
 	Routes "github.com/m/routes"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main(){
+
+	apiKey := os.Getenv("API_KEY")
+	if len(apiKey) < 32 {
+		log.Fatal("API_KEY doit contenir au moins 32 caractères")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //global context timeout set
 
 	db, err := Database.Connect(ctx, os.Getenv("DATABASE_URL")) //testing db connexion
@@ -31,6 +38,7 @@ func main(){
 		log.Fatal(err)
 	}
 
+	router.Use(Middleware.ApiKey(apiKey))
 	Routes.Register(router, db) //setting routes
 
 	server := &http.Server{ //setting server params
