@@ -59,6 +59,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
+      - api
+    logging:
       driver: local
 
 volumes:
