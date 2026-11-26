@@ -19,8 +19,6 @@ services:
 
   api:
     build: .
-    ports:
-      - "127.0.0.1:8080:8080"
     environment:
       GIN_MODE: release
       API_KEY: ${API_KEY:?API_KEY obligatoire}
@@ -50,5 +48,20 @@ services:
       db:
         condition: service_healthy
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      driver: local
+
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:
